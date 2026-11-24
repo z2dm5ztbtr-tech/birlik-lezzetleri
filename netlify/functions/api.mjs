@@ -1,14 +1,6 @@
-import { timingSafeEqual } from 'node:crypto';
-// Garson anahtarla doğrulanır. Diğer roller isteğe bağlı olarak herkese açıktır.
-const publicRoles=['mutfak','gorevli','kasa','admin'];
-const roleOf = h => {
- const requested=h['x-bl-role']||h['X-BL-Role']||'';
- if(publicRoles.includes(requested)) return requested;
- const token=(h.authorization||h.Authorization||'').replace(/^Bearer /,'');
- const secret=process.env.BL_GARSON_KEY;
- if((!requested||requested==='garson')&&token&&secret&&secret.length>=16&&Buffer.byteLength(token)===Buffer.byteLength(secret)&&timingSafeEqual(Buffer.from(token),Buffer.from(secret))) return 'garson';
- return null;
-};
+// Demo: all staff panels are public.
+const publicRoles=['garson','mutfak','gorevli','kasa','admin'];
+const roleOf=h=>{const requested=h['x-bl-role']||h['X-BL-Role']||'';return publicRoles.includes(requested)?requested:null;};
 class ApiError extends Error {constructor(status,message){super(message);this.status=status;}}
 const requireThat=(ok,msg='Geçersiz işlem',status=400)=>{if(!ok)throw new ApiError(status,msg);};
 const result=(status,data)=>({statusCode:status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'},body:JSON.stringify(data)});
@@ -33,7 +25,7 @@ export async function handler(event){
  const table_no=tableNo(b.table_no);requireThat(['garson','gorevli'].includes(b.kind),'Geçersiz çağrı.');const rows=await db('bl_calls','','POST',{table_no,kind:b.kind});return result(201,{id:rows[0].id,status:rows[0].status});}
  if(action==='callstatus'&&method==='GET'){
  const id=uuid(event.queryStringParameters?.id);const rows=await db('bl_calls','id=eq.'+id+'&select=status');requireThat(rows.length,'Çağrı bulunamadı.',404);return result(200,rows[0]);}
- requireThat(role,'Personel anahtarı gerekli.',401);
+ requireThat(role,'Personel ekranı belirtilmedi.',401);
  if(action==='login'&&method==='GET')return result(200,{role});
  if(action==='state'&&method==='GET'){
  const cq=role==='garson'?'&kind=eq.garson':['mutfak','gorevli'].includes(role)?'&kind=eq.gorevli':'';
