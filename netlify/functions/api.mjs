@@ -1,9 +1,12 @@
 import { timingSafeEqual } from 'node:crypto';
-const roles=['garson','mutfak','gorevli','kasa','admin'];
+// Garson anahtarla doğrulanır. Diğer roller isteğe bağlı olarak herkese açıktır.
+const publicRoles=['mutfak','gorevli','kasa','admin'];
 const roleOf = h => {
+ const requested=h['x-bl-role']||h['X-BL-Role']||'';
+ if(publicRoles.includes(requested)) return requested;
  const token=(h.authorization||h.Authorization||'').replace(/^Bearer /,'');
- if(!token) return null;
- for(const role of roles){const secret=process.env['BL_'+role.toUpperCase()+'_KEY']; if(secret&&secret.length>=16&&Buffer.byteLength(token)===Buffer.byteLength(secret)&&timingSafeEqual(Buffer.from(token),Buffer.from(secret))) return role;}
+ const secret=process.env.BL_GARSON_KEY;
+ if((!requested||requested==='garson')&&token&&secret&&secret.length>=16&&Buffer.byteLength(token)===Buffer.byteLength(secret)&&timingSafeEqual(Buffer.from(token),Buffer.from(secret))) return 'garson';
  return null;
 };
 class ApiError extends Error {constructor(status,message){super(message);this.status=status;}}
