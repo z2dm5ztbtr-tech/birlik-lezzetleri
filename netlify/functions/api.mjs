@@ -15,11 +15,11 @@ async function db(table,query='',method='GET',body){
  if(!r.ok){if(data?.code==='23505')throw new ApiError(409,'Bu masa için açık çağrı zaten var.');console.error('Database error',r.status,data?.code);throw new ApiError(502,'Veritabanı işlemi başarısız.');}return data;
 }
 const can=(role,...allowed)=>requireThat(allowed.includes(role),'Bu işlem için yetkiniz yok.',403);
-function menuData(b){const name=str(b.name,100),category=str(b.category,60),description=str(b.description,400),photo=str(b.photo,1000);const price=b.price===''||b.price==null?null:Number(b.price);requireThat(name&&category,'Ürün adı ve kategori gerekli.');requireThat(price===null||(Number.isFinite(price)&&price>=0&&price<=99999999),'Geçersiz fiyat.');requireThat(!photo||/^https:\/\//i.test(photo),'Fotoğraf bağlantısı HTTPS olmalı.');return {name,category,description,photo,price,active:b.active!==false};}
+function menuData(b){const name=str(b.name,100),category=str(b.category,60),description=str(b.description,400),photo=str(b.photo,120001);const price=b.price===''||b.price==null?null:Number(b.price);requireThat(name&&category,'Ürün adı ve kategori gerekli.');requireThat(price===null||(Number.isFinite(price)&&price>=0&&price<=99999999),'Geçersiz fiyat.');requireThat(!photo||(photo.length<=1000&&/^https:\/\//i.test(photo))||(photo.length<=120000&&/^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/.test(photo)),'Geçersiz veya çok büyük fotoğraf.');return {name,category,description,photo,price,active:b.active!==false};}
 export async function handler(event){
  try{
  const action=event.path.split('/').filter(Boolean).at(-1);const method=event.httpMethod;const role=roleOf(event.headers||{});let b={};
- if(method==='POST'){requireThat((event.body||'').length<=25000,'İstek çok büyük.',413);try{b=JSON.parse(event.body||'{}');}catch{throw new ApiError(400,'Geçersiz JSON.');}requireThat(b&&typeof b==='object'&&!Array.isArray(b),'Geçersiz veri.');}
+ if(method==='POST'){requireThat((event.body||'').length<=150000,'İstek çok büyük.',413);try{b=JSON.parse(event.body||'{}');}catch{throw new ApiError(400,'Geçersiz JSON.');}requireThat(b&&typeof b==='object'&&!Array.isArray(b),'Geçersiz veri.');}
  if(action==='menu'&&method==='GET')return result(200,await db('bl_menu','active=eq.true&order=category.asc,id.asc'));
  if(action==='call'&&method==='POST'){
  const table_no=tableNo(b.table_no);requireThat(['garson','gorevli'].includes(b.kind),'Geçersiz çağrı.');const rows=await db('bl_calls','','POST',{table_no,kind:b.kind});return result(201,{id:rows[0].id,status:rows[0].status});}
